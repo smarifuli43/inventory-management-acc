@@ -24,7 +24,8 @@ const userSchema = mongoose.Schema(
             minUppercase: 1,
             minSymbols: 1,
           }),
-        message: 'Password {VALUE} is not strong enough. please add at least 1 number, 1 uppercase, 1 lowercase, 1 symbol and 6 characters',
+        message:
+          'Password {VALUE} is not strong enough. please add at least 1 number, 1 uppercase, 1 lowercase, 1 symbol and 6 characters',
       },
     },
     confirmPassword: {
@@ -97,6 +98,11 @@ userSchema.pre('save', function (next) {
   this.confirmPassword = undefined; // remove confirmPassword from the database because it is not needed to be stored in the database
   next();
 });
+
+userSchema.methods.comparePassword = function (password, hash) {
+  const isPasswordValid = bcrypt.compareSync(password, hash);
+  return isPasswordValid;
+};
 
 const User = mongoose.model('User', userSchema);
 

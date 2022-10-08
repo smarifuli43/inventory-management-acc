@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const productController = require('../controllers/product.controller');
+const authorization = require('../middleware/authorization');
 const uploader = require('../middleware/uploader');
+const verifyToken = require('../middleware/verifyToken');
+
+// router.use(verifyToken); // if we need to protect all routes in this file, we can use this middleware here
 
 router.post(
   '/file-upload',
@@ -19,14 +23,15 @@ router.post(
 
 router.route('/bulk-update').patch(productController.bulkUpdateProducts);
 router.route('/bulk-delete').delete(productController.bulkDeleteProducts);
-router
-  .route('/')
-  .get(productController.getProducts)
-  .post(productController.createProduct);
+router.route('/').get(productController.getProducts).post(
+  verifyToken,
+  authorization('admin', 'store-manager'), // this function will return a middleware function that will check if the user is authorized
+  productController.createProduct
+);
 
 router
   .route('/:id')
   .patch(productController.updateProductById)
-  .delete(productController.deleteProductById);
+  .delete(authorization('admin'), productController.deleteProductById);
 
 module.exports = router;

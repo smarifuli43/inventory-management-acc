@@ -1,11 +1,31 @@
 const Stock = require('../models/Stock');
+const ObjectId = require('mongoose').Types.ObjectId;
 
 exports.getStocksService = async (filters, queries) => {
-  const stocks = await Stock.find(filters)
-    .skip(queries.skip)
-    .limit(queries.limit)
-    .select(queries.fields)
-    .sort(queries.sortBy);
+  // const stocks = await Stock.find(filters)
+  //   .skip(queries.skip)
+  //   .limit(queries.limit)
+  //   .select(queries.fields)
+  //   .sort(queries.sortBy);
+
+  // ************* Aggregate method
+  const stocks = await Stock.aggregate([
+    // { $match: { 'store.name': 'chittagong' } },
+    { $match: {} },
+    {
+      $project: {
+        store: 1,
+        price: { $convert: { input: '$price', to: 'int' } },
+        quantity: 1,
+      },
+    },
+    {
+      $group: {
+        _id: '$store.name',
+        totalProductsPrice: { $sum: { $multiply: ['$price', '$quantity'] } },
+      },
+    }, // for grouping all the store name
+  ]);
 
   const total = await Stock.countDocuments(filters);
   const page = Math.ceil(total / queries.limit);
@@ -14,10 +34,35 @@ exports.getStocksService = async (filters, queries) => {
 };
 
 exports.getStockByIdService = async (id) => {
-  const stock = await Stock.findOne({ _id: id })
-    .populate('store.id')
-    .populate('suppliedBy.id')
-    .populate('brand.id');
+  //  ************* populate method
+  // const stock = await Stock.findOne({ _id: id })
+  //   .populate('store.id')
+  //   .populate('suppliedBy.id')
+  //   .populate('brand.id');'
+
+  // ************* Aggregate method
+  const stock = await Stock.aggregate([
+    // stage 1
+    { $match: { _id: ObjectId(id) } },
+    {
+      $project: {
+        name: 1,
+        category: 1,
+        quantity: 1,
+        price: 1,
+        productId: 1,
+        'brand.name': { $toLower: '$brand.name' },
+      },
+    },
+    {
+      $lookup: {
+        from: 'brands',
+        localField: 'brand.name',
+        foreignField: 'name',
+        as: 'brandDetails',
+      },
+    },
+  ]);
   return stock;
 };
 
